@@ -62,7 +62,8 @@ void help(void)
             "                           flat hierarchy (no subfolders)\n" \
             " [-p | --port ]..........: TCP port for this HTTP server\n" \
             " [-c | --credentials ]...: ask for \"username:password\" on connect\n" \
-            " [-n | --nocommands ]....: disable execution of commands\n"
+            " [-n | --nocommands ]....: disable execution of commands\n" \
+            " [-t | --thumbnail ].....: scale down video stream to specified width (still images unchanged)\n"
             " ---------------------------------------------------------------\n");
 }
 
@@ -82,6 +83,7 @@ int output_init(output_parameter *param, int id)
     int  port;
     char *credentials, *www_folder;
     char nocommands;
+    int thumbnailWidth;
 
     DBG("output #%02d\n", param->id);
 
@@ -89,6 +91,7 @@ int output_init(output_parameter *param, int id)
     credentials = NULL;
     www_folder = NULL;
     nocommands = 0;
+    thumbnailWidth = 0;
 
     param->argv[0] = OUTPUT_PLUGIN_NAME;
 
@@ -112,6 +115,8 @@ int output_init(output_parameter *param, int id)
             {"www", required_argument, 0, 0},
             {"n", no_argument, 0, 0},
             {"nocommands", no_argument, 0, 0},
+            {"t", required_argument, 0, 0},
+            {"thumbnail", required_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -165,6 +170,13 @@ int output_init(output_parameter *param, int id)
             DBG("case 8,9\n");
             nocommands = 1;
             break;
+            
+            /* t, thumbnail */
+        case 10:
+        case 11:
+            DBG("case 10,11\n");
+            thumbnailWidth = atoi(optarg);
+            break;
         }
     }
 
@@ -174,11 +186,16 @@ int output_init(output_parameter *param, int id)
     servers[param->id].conf.credentials = credentials;
     servers[param->id].conf.www_folder = www_folder;
     servers[param->id].conf.nocommands = nocommands;
+    servers[param->id].conf.thumbnailWidth = thumbnailWidth;
 
     OPRINT("www-folder-path...: %s\n", (www_folder == NULL) ? "disabled" : www_folder);
     OPRINT("HTTP TCP port.....: %d\n", ntohs(port));
     OPRINT("username:password.: %s\n", (credentials == NULL) ? "disabled" : credentials);
     OPRINT("commands..........: %s\n", (nocommands) ? "disabled" : "enabled");
+    OPRINT("thumbnail.........: %s\n", (thumbnailWidth>0) ? "enabled" : "disabled");
+    if (thumbnailWidth>0) {
+        OPRINT("thumbnail width...: %dpx\n", thumbnailWidth);
+    }
 
     param->global->out[id].name = malloc((strlen(OUTPUT_PLUGIN_NAME) + 1) * sizeof(char));
     sprintf(param->global->out[id].name, OUTPUT_PLUGIN_NAME);

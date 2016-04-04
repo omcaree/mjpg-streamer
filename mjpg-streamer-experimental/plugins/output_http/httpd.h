@@ -123,6 +123,7 @@ typedef struct {
     char *credentials;
     char *www_folder;
     char nocommands;
+    int thumbnailWidth;
 } config;
 
 /* context of each server thread */
