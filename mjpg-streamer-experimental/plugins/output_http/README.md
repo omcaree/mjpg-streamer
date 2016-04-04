@@ -17,8 +17,11 @@ The following parameters can be passed to this plugin:
 [-p | --port ]..........: TCP port for this HTTP server
 [-c | --credentials ]...: ask for "username:password" on connect
 [-n | --nocommands ]....: disable execution of commands
+[-t | --thumbnail ].....: scale down video stream to specified width (still images unchanged)
 ---------------------------------------------------------------
 ```
+
+Thumbnail option allows you to specify the width of the image output as a stream, which can be different from the snapshot resolution. This can be useful if you want to use the stream to get a live preview from the camera (over a fairly low bandwidth wifi connection) but occasionally capture high resolution stills.
 
 Browser/VLC
 -----------

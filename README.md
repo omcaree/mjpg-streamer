@@ -1,7 +1,7 @@
 mjpg-streamer
 =============
 
-This is a fork of http://sourceforge.net/projects/mjpg-streamer/ with added support for the Raspberry Pi camera via the input_raspicam plugin.
+This is a fork of https://github.com/jacksonliam/mjpg-streamer with added support resizing the output_http stream images independantly from the still images.
 
 mjpg-streamer is a command line application that copies JPEG frames from one
 or more input plugins to multiple output plugins. It can be used to stream
@@ -84,7 +84,7 @@ From the mjpeg streamer experimental
 folder:
 ```
 export LD_LIBRARY_PATH=.
-./mjpg_streamer -o "output_http.so -w ./www" -i "input_raspicam.so"
+./mjpg_streamer -o "output_http.so -w ./www -t 320" -i "input_raspicam.so"
 ```
 
 See [README.md](mjpg-streamer-experimental/README.md) or the individual plugin's documentation for more details.
