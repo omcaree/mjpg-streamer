@@ -42,6 +42,9 @@
 #include <linux/types.h>          /* for videodev2.h */
 #include <linux/videodev2.h>
 
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+
 #include "../../mjpg_streamer.h"
 #include "../../utils.h"
 
@@ -458,7 +461,7 @@ Return Value: -
 void send_stream(cfd *context_fd, int input_number)
 {
     unsigned char *frame = NULL, *tmp = NULL;
-    int frame_size = 0, max_frame_size = 0;
+    int frame_size = 0, max_frame_size = 0, thumb_size = 0;
     char buffer[BUFFER_SIZE] = {0};
     struct timeval timestamp;
 
@@ -474,18 +477,22 @@ void send_stream(cfd *context_fd, int input_number)
         free(frame);
         return;
     }
-
+    
     DBG("Headers send, sending stream now\n");
 
     while(!pglobal->stop) {
-
+        
         /* wait for fresh frames */
         pthread_mutex_lock(&pglobal->in[input_number].db);
         pthread_cond_wait(&pglobal->in[input_number].db_update, &pglobal->in[input_number].db);
 
         /* read buffer */
         frame_size = pglobal->in[input_number].size;
-
+        
+        /* Create some CV variables for thumbnail rezising */
+        CvMat *imgMat = cvCreateMat(1,frame_size,CV_8UC1);
+        CvMat *encImg;
+        
         /* check if framebuffer is large enough, increase it if necessary */
         if(frame_size > max_frame_size) {
             DBG("increasing buffer size to %d\n", frame_size);
@@ -508,6 +515,25 @@ void send_stream(cfd *context_fd, int input_number)
         DBG("got frame (size: %d kB)\n", frame_size / 1024);
 
         pthread_mutex_unlock(&pglobal->in[input_number].db);
+        
+        /* If a thumbnail is desired, resize frame here */
+        if (context_fd->pc->conf.thumbnailWidth>0) {
+            /* Decode original frame */
+            imgMat->data.ptr = frame;
+            CvMat *oldImg = cvDecodeImageM(imgMat,CV_LOAD_IMAGE_COLOR);
+            
+            /* Resize to specified width */
+            CvSize originalSize = cvGetSize(oldImg);
+            int newWidth = context_fd->pc->conf.thumbnailWidth;
+            int newHeight = originalSize.height*newWidth/originalSize.width;
+            CvMat *newImg = cvCreateMat(newHeight,newWidth,cvGetElemType(oldImg));
+            cvResize(oldImg,newImg,CV_INTER_LINEAR);
+
+            /* Re-encode as a JPEG */
+            encImg = cvEncodeImage(".jpg",newImg,0);
+            CvSize size = cvGetSize(encImg);
+            thumb_size = size.width;
+        }
 
         #ifdef MANAGMENT
         update_client_timestamp(context_fd->client);
@@ -525,8 +551,13 @@ void send_stream(cfd *context_fd, int input_number)
         DBG("sending intemdiate header\n");
         if(write(context_fd->fd, buffer, strlen(buffer)) < 0) break;
 
+        /* Send thumbnail is required */
         DBG("sending frame\n");
-        if(write(context_fd->fd, frame, frame_size) < 0) break;
+        if (context_fd->pc->conf.thumbnailWidth>0) {
+            if(write(context_fd->fd, encImg->data.ptr, thumb_size) < 0) break;
+        } else {
+            if(write(context_fd->fd, frame, frame_size) < 0) break;
+        }
 
         DBG("sending boundary\n");
         sprintf(buffer, "\r\n--" BOUNDARY "\r\n");
